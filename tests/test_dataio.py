@@ -57,11 +57,13 @@ def test_dataio_artist():
     rawprofile = rawio.makeRawProfileData(general={}, genres={}, tags={}, external={}, extra={})
     
     mediaCollection = {}
-    mediaTypeName = "Album"
-    mediaID = "artistID123-albumID123"
-    title = "My Album"
     
-    mediaRootData = rawio.makeRawMediaRootData(mediaID=mediaID, name=title)
+    mediaTypeName = "Album"
+    artistID = '12345'
+    albumID = '56789'
+    name = "My Album"
+    pdbid = "-".join([mediaTypeName, f"Art{artistID}", f"Alb{albumID}"])
+    mediaRootData = rawio.makeRawMediaRootData(pdbid=pdbid, dbid=albumID, name=name)
     
     if mediaCollection.get(mediaTypeName) is None:
         mediaCollection[mediaTypeName] = []

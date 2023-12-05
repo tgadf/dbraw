@@ -5,8 +5,9 @@ __all__ = ["RawDataIOBase", "RawDataFileIO"]
 from utils import FileInfo, HTMLIO, FileIO
 from bs4.element import Tag
 from .artistdata import RawArtistData
-from .artistdata import RawBasicData, RawProfileData, RawMetaData, RawInfoData, RawPageData, RawNameData, RawURLData, RawIDData
-from .mediadata import RawMediaCollectionData, RawMediaDataBase, RawMediaRootData, RawMediaDeepData
+from .artistdata import RawBasicData, RawProfileData, RawMetaData, RawInfoData
+from .artistdata import RawPageData, RawNameData, RawURLData, RawIDData
+from .mediadata import RawMediaCollectionData, RawMediaRootData, RawMediaDeepData
 
 
 class RawDataFileIO:

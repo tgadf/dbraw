@@ -1,9 +1,8 @@
 """ Raw Data Media Base Classes """
 
-__all__ = ["RawMediaCollectionData", "RawMediaDataBase", "RawMediaRootData", "RawMediaDeepData"]
+__all__ = ["RawMediaCollectionData", "RawMediaRootData", "RawMediaDeepData"]
 
 from pandas import concat, DataFrame, Series
-from utils import FileIO
 from .base import RawBaseData
 
 
@@ -20,7 +19,7 @@ class RawMediaCollectionData(RawBaseData):
         
     def add(self, mediaType, mediaTypeData, allowDuplicates=None) -> 'None':
         def isMedia(mediaData):
-            return isinstance(mediaData, (RawMediaDataBase, RawMediaRootData, RawMediaDeepData))
+            return isinstance(mediaData, (RawMediaRootData, RawMediaDeepData))
         
         allowDuplicates = allowDuplicates if isinstance(allowDuplicates, bool) else self.allowDuplicates
         assert isinstance(mediaType, str), f"MediaType [{mediaType}] is not a string"
@@ -28,18 +27,12 @@ class RawMediaCollectionData(RawBaseData):
         assert isinstance(mediaTypeData, list), f"MediaTypeData [{mediaTypeData}] is not a list"
         
         mediaElementData = {}
-        for mediaIDData in mediaTypeData:
-            assert isMedia(mediaIDData), f"Could not add MediaIDData of type [{type(mediaIDData)}]"
-            key = mediaIDData.mediaID
-            value = {k: v for k, v in mediaIDData.get().items() if k not in ["mediaID"]}
+        for mediaTypeRecord in mediaTypeData:
+            assert isMedia(mediaTypeRecord), f"Could not add mediaTypeRecord of type [{type(mediaTypeRecord)}]"
+            key = mediaTypeRecord.pdbid
+            value = {k: v for k, v in mediaTypeRecord.get().items() if k not in ["pdbid"]}
             value["Type"] = mediaType
             mediaElementData[key] = value
-        #if len(mediaElementData) > 0:
-        #    io = FileIO()
-        #    io.save(idata=mediaElementData, ifile="/Users/tgadfort/code/musicdb/ddata.p")
-        #    1/0
-        #print(mediaElementData)
-        #mediaElementData = Series(mediaElementData).apply(Series)
         mediaElementData = DataFrame(mediaElementData).T
             
         indexIntersection = mediaElementData.index.intersection(self.collection.index)
@@ -54,7 +47,7 @@ class RawMediaCollectionData(RawBaseData):
         self.collection = concat([self.collection, mediaElementData])
         self.collection = self.collection[~self.collection.index.duplicated()]
         
-    def merge(self, collectionData, allowDuplicates=None):
+    def merge(self, collectionData, allowDuplicates=None, **kwargs) -> 'None':
         allowDuplicates = allowDuplicates if isinstance(allowDuplicates, bool) else self.allowDuplicates
         assert isinstance(collectionData, RawMediaCollectionData), f"CollectionData is type [{type(collectionData)}] and not [RawMediaCollectionData] in RawMediaCollectionData.merge"
         mediaElementData = collectionData.get()
@@ -99,39 +92,49 @@ class RawMediaCollectionData(RawBaseData):
             else:
                 print(f"{mediaType: >15}: {mediaTypeData.shape[0]}")
 
+
+class RawMediaDataBase:
+    def __init__(self, pdbid, dbid):
+        assert isinstance(pdbid, str), f"PanDB ID [{pdbid}] is not correctly formatted"
+        assert isinstance(dbid, str), f"DB ID [{dbid}] is not correctly formatted"
+        setattr(self, 'pdbid', pdbid)
+        setattr(self, 'dbid', dbid)
         
-class RawMediaDataBase(RawBaseData):
-    def __repr__(self):
-        return f"RawMediaDataBase(mediaID={self.mediaID})"
+    def get(self):
+        return self.__dict__
     
-    def __init__(self, mediaID):
-        assert isinstance(mediaID, (str, tuple)), f"Media ID [{mediaID}] is not correctly formatted in RawMediaBaseData"
-        self.mediaID = mediaID
-
-
-class RawMediaRootData(RawMediaDataBase):
-    def __repr__(self):
-        return f"RawMediaRootData(mediaID={self.mediaID}, name={self.name})"
-    
-    def __init__(self, mediaID, name):
-        super().__init__(mediaID)
-        assert isinstance(name, str), f"Media Name [{name}] is not correctly formatted in RawMediaBaseData"
-        self.name = name
-            
-    def compare(self, rootData):
-        retval = rootData.__dict__ == self.__dict__ if isinstance(rootData, RawMediaRootData) else None
+    def __eq__(self, rootData):
+        retval = rootData.__dict__ == self.__dict__ if hasattr(rootData, "__dict__") else None
         return retval
 
+    def compare(self, rootData, keys=None):
+        assert hasattr(rootData, "__dict__"), f"rootData [{rootData}] does not have a dictionary"
+        if isinstance(keys, list):
+            selfData = {k: v for k, v in self.__dict__.items() if k in keys}
+            rootData = {k: v for k, v in rootData.__dict__.items() if k in keys}
+            return selfData == rootData
+        return self == rootData
+        
+    
+class RawMediaRootData(RawMediaDataBase):
+    def __repr__(self):
+        return f"RawMediaRootData(pdbid={self.pdbid}, dbid={self.dbid}, name={self.name})"
+    
+    def __init__(self, pdbid, dbid, name):
+        super().__init__(pdbid, dbid)
+        assert isinstance(name, str), f"Media Name [{name}] is not correctly formatted"
+        setattr(self, 'name', name)
+        
 
 class RawMediaDeepData(RawMediaDataBase):
     def __repr__(self):
-        return f"RawMediaDeepData({self.__dict__})"
+        return f"RawMediaDeepData(pdbid={self.pdbid}, dbid={self.dbid}, artids={self.artids})"
     
-    def __init__(self, mediaID, **kwargs):
-        super().__init__(mediaID)
+    def __init__(self, pdbid, dbid, artids, **kwargs):
+        super().__init__(pdbid, dbid)
+        assert isinstance(artids, list), f"Artist IDs [{artids}] is not correctly formatted"
+        assert all([isinstance(artid, str) for artid in artids]), f"artids [{artids}] are not all str"
+        setattr(self, 'artids', artids)
         for key, value in kwargs.items():
             setattr(self, key, value)
             
-    def compare(self, deepData):
-        retval = deepData.__dict__ == self.__dict__ if isinstance(deepData, RawMediaDeepData) else None
-        return retval
